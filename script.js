@@ -230,6 +230,17 @@ function confirmYes(){
     goPage('dash');
     renderCalendarGuest();
     showToast('👋 ออกจากระบบแล้ว', 'ok');
+    resetConfirmDialog();
+    return;
+  }
+
+  if(_delTxnId !== null){
+    const id = _delTxnId; _delTxnId = null;
+    lsSet(tkKey(), lsGet(tkKey()).filter(t=>t.id!==id));
+    renderCalendar();
+    if(document.getElementById('page-report').classList.contains('on')) renderReport();
+    showToast('🗑️ ลบรายการแล้ว', 'ok');
+    resetConfirmDialog();
     return;
   }
 
@@ -239,7 +250,6 @@ function confirmYes(){
     renderCalendar();
     initManagePage();
     showToast('🗑️ ล้างข้อมูลทั้งหมดแล้ว', 'ok');
-    // reset dialog text กลับ
     resetConfirmDialog();
     return;
   }
@@ -249,6 +259,7 @@ function confirmNo(){
   document.getElementById('confirmOverlay').style.display = 'none';
   _logoutPending    = false;
   _deleteAllPending = false;
+  _delTxnId         = null;
   resetConfirmDialog();
 }
 
@@ -590,17 +601,96 @@ function addTxn(){
 
   const txn={id:Date.now(),date,type,amount:amt,category:cat,note:note||(type==='income'?'รายรับ':'รายจ่าย')};
   const all=lsGet(tkKey()); all.push(txn); lsSet(tkKey(),all);
+
   showToast('✅ บันทึกรายการสำเร็จ!','ok');
-  document.getElementById('fAmt').value='';
-  document.getElementById('fNote').value='';
-  renderCalendar();
+  resetForm();
+
+  // หลังบันทึก → เด้งกลับไป Dashboard อัตโนมัติ
+  goPage('dash');
 }
 
 function delTxn(id){
-  if(!confirm('ต้องการลบรายการนี้?'))return;
-  lsSet(tkKey(),lsGet(tkKey()).filter(t=>t.id!==id));
-  renderCalendar(); renderReport();
-  showToast('🗑️ ลบรายการแล้ว','ok');
+  _delTxnId = id;
+  const ov = document.getElementById('confirmOverlay');
+  ov.querySelector('div > div:nth-child(2)').textContent = 'ลบรายการ';
+  ov.querySelector('div > div:nth-child(3)').textContent = 'ต้องการลบรายการนี้? ไม่สามารถกู้คืนได้';
+  ov.style.display = 'flex';
+}
+let _delTxnId = null;
+
+/* ── EDIT TRANSACTION ── */
+
+/**
+ * editTxn(id) — เปิด Edit Modal พร้อมข้อมูลเดิม
+ * ดึง transaction จาก localStorage แล้วใส่ใน modal
+ */
+function editTxn(id){
+  const txn = lsGet(tkKey()).find(t=>t.id===id);
+  if(!txn) return;
+
+  // เก็บ id ที่กำลังแก้ไข
+  document.getElementById('editId').value = id;
+
+  // ใส่ค่าเดิมในฟอร์ม
+  document.getElementById('editDate').value = txn.date;
+  document.getElementById('editAmt').value  = txn.amount;
+  document.getElementById('editNote').value = txn.note;
+
+  // ตั้ง type + สร้าง dropdown category
+  setEditType(txn.type);
+
+  // เลือก category ที่ตรงกับเดิม
+  setTimeout(()=>{
+    document.getElementById('editCat').value = txn.category;
+  }, 10);
+
+  // แสดง modal
+  document.getElementById('editModal').style.display = 'flex';
+}
+
+/** เลือกประเภทใน edit form */
+function setEditType(t){
+  document.getElementById('editType').value = t;
+  document.getElementById('editBtnI').className = 'tbtn' + (t==='income'  ? ' ion' : '');
+  document.getElementById('editBtnE').className = 'tbtn' + (t==='expense' ? ' eon' : '');
+  document.getElementById('editCat').innerHTML =
+    CATS[t].map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+
+/** ปิด Edit Modal เมื่อคลิก backdrop */
+function editBackdropClose(e){
+  if(e.target === document.getElementById('editModal')) closeEditModal();
+}
+
+/** ปิด Edit Modal */
+function closeEditModal(){
+  document.getElementById('editModal').style.display = 'none';
+}
+
+/** บันทึกการแก้ไข */
+function saveEdit(){
+  const id   = parseInt(document.getElementById('editId').value);
+  const date = document.getElementById('editDate').value;
+  const type = document.getElementById('editType').value;
+  const amt  = parseFloat(document.getElementById('editAmt').value);
+  const cat  = document.getElementById('editCat').value;
+  const note = document.getElementById('editNote').value.trim();
+
+  if(!date)        return showToast('กรุณาเลือกวันที่','err');
+  if(!amt||amt<=0) return showToast('กรุณากรอกจำนวนเงินที่ถูกต้อง','err');
+
+  // อัปเดต transaction ใน array
+  const all = lsGet(tkKey()).map(t =>
+    t.id === id
+      ? { ...t, date, type, amount:amt, category:cat, note:note||(type==='income'?'รายรับ':'รายจ่าย') }
+      : t
+  );
+  lsSet(tkKey(), all);
+  closeEditModal();
+  showToast('✏️ แก้ไขรายการสำเร็จ!', 'ok');
+  renderCalendar();
+  // ถ้าหน้า report เปิดอยู่ให้อัปเดตด้วย
+  if(document.getElementById('page-report').classList.contains('on')) renderReport();
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -706,7 +796,10 @@ function buildTxnTable(txns){
       <td style="color:var(--mut)">${esc(t.note)}</td>
       <td style="text-align:right;font-weight:700;color:${t.type==='income'?'var(--inc)':'var(--exp)'}">
         ${t.type==='income'?'+':'-'}฿${fmt(t.amount)}</td>
-      <td><button class="delbtn" onclick="delTxn(${t.id})">🗑️</button></td>
+      <td style="display:flex;gap:4px;align-items:center">
+        <button class="editbtn" onclick="editTxn(${t.id})" title="แก้ไข">✏️</button>
+        <button class="delbtn"  onclick="delTxn(${t.id})"  title="ลบ">🗑️</button>
+      </td>
     </tr>`).join('')}</tbody></table>`;
 }
 

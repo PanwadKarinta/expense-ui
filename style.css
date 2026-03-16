@@ -478,6 +478,11 @@ tbody tr:last-child td{border-bottom:none}
   cursor:pointer;font-size:.82rem;padding:3px;border-radius:5px;transition:color var(--tr);
 }
 .delbtn:hover{color:var(--exp)}
+.editbtn{
+  background:none;border:none;color:var(--mut);
+  cursor:pointer;font-size:.82rem;padding:3px;border-radius:5px;transition:color var(--tr);
+}
+.editbtn:hover{color:var(--acc)}
 
 /* ══════════════════════════════
    BUDGET PAGE
@@ -535,90 +540,6 @@ tbody tr:last-child td{border-bottom:none}
 ::-webkit-scrollbar-track{background:var(--surf2)}
 ::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
 
-
-
-/* ===============================
-   RESPONSIVE DESIGN
-   =============================== */
-
-/* Tablet */
-@media (max-width: 1024px){
-
-  :root{
-    --sb:220px;
-  }
-
-  .container{
-    padding:20px;
-  }
-
-  .cards{
-    grid-template-columns:1fr 1fr;
-  }
-
-}
-
-/* Mobile */
-@media (max-width: 768px){
-
-  /* sidebar ซ่อน */
-  .sidebar{
-    position:fixed;
-    left:-260px;
-    top:0;
-    height:100%;
-    z-index:2000;
-    transition:0.3s;
-  }
-
-  .sidebar.show{
-    left:0;
-  }
-
-  /* เนื้อหาขยายเต็มจอ */
-  .main{
-    margin-left:0;
-    padding:15px;
-  }
-
-  /* การ์ด */
-  .cards{
-    grid-template-columns:1fr;
-  }
-
-  /* chart */
-  canvas{
-    width:100% !important;
-    height:auto !important;
-  }
-
-}
-
-/* Small Mobile */
-@media (max-width:480px){
-
-  html{
-    font-size:14px;
-  }
-
-  .topbar{
-    flex-direction:column;
-    gap:10px;
-  }
-
-  .acard{
-    padding:25px 20px;
-  }
-
-  .atabs{
-    flex-direction:column;
-  }
-
-  .ain{
-    font-size:14px;
-  }
-
-}
 
 
 /* ===============================
